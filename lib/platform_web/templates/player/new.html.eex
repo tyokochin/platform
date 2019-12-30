@@ -12,7 +12,7 @@
   <%= error_tag f, :username %>
 
   <%= label f, :password %>
-  <%= number_input f, :password %>
+  <%= password_input f, :password %>
   <%= error_tag f, :password %>
 
   <div>

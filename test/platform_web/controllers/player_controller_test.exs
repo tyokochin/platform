@@ -3,9 +3,13 @@ defmodule PlatformWeb.PlayerControllerTest do
 
   alias Platform.Accounts
 
-  @create_attrs %{score: 42, username: "some username"}
-  @update_attrs %{score: 43, username: "some updated username"}
-  @invalid_attrs %{score: nil, username: nil}
+  @create_attrs %{password: "some password", username: "some username"}
+  @update_attrs %{
+    display_name: "some updated display_name",
+    password: "some updated password",
+    score: 43,
+    username: "some updated username"}
+  @invalid_attrs %{password: nil, username: nil}
 
   def fixture(:player) do
     {:ok, player} = Accounts.create_player(@create_attrs)
