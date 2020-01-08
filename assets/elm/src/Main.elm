@@ -33,6 +33,7 @@ type alias Game =
     { description : String
     , featured : Bool
     , id : Int
+    , slug : String
     , thumbnail : String
     , title : String 
     }
@@ -81,10 +82,11 @@ decodeGamesList =
 
 decodeGame : Decode.Decoder Game
 decodeGame =
-  Decode.map5 Game
+  Decode.map6 Game
     (Decode.field "description" Decode.string)
     (Decode.field "featured" Decode.bool)
     (Decode.field "id" Decode.int)
+    (Decode.field "slug" Decode.string)
     (Decode.field "thumbnail" Decode.string)
     (Decode.field "title" Decode.string)
 
@@ -168,7 +170,11 @@ featured model =
             [ h2 [] [ text "Featured" ]
             , h3 [] [ text game.title ]
             , p [] [ text game.description ]
-            , button [ class "button" ] [ text "Play Now!" ]
+            , a
+              [ class "button"
+              , href ("games/" ++ game.slug)
+              ]
+              [ text "Play Now!" ]
             ]
           ]
         ]
@@ -198,7 +204,7 @@ gamesList games =
 
 gamesListItem : Game -> Html msg
 gamesListItem game =
-  a [ href "#" ]
+  a [ href ("games/" ++ game.slug) ]
       [ li [ class "game-item" ]
         [ div [ class "game-image" ]
          [ img [ src game.thumbnail ] []
