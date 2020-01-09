@@ -16,6 +16,13 @@ import "phoenix_html"
 // Local files can be imported directly using relative paths, for example:
 // import socket from "./socket"
 
+// Phoenix Socket
+import { Socket } from "phoenix"
+
+let socket = new Socket("/socket", {})
+
+socket.connect()
+
 // Elm
 import { Elm } from "../elm/src/Main.elm";
 
@@ -26,7 +33,18 @@ if (elmContainer) {
   Elm.Main.init({ node: elmContainer });
 }
 if (platformer) {
-  Elm.Games.Platformer.init({ node: platformer });
+  let app = Elm.Games.Platformer.init({ node: platformer });
+
+  let channel = socket.channel("score:platformer", {})
+
+  channel.join()
+    .receive("ok", resp => { console.log("Joined successfully", resp) })
+    .receive("error", resp => { console.log("Unable to join", resp) })
+
+  app.ports.broadcastScore.subscribe(function (scoreData) {
+    console.log(`Broadcasting ${scoreData} score data from Elm using the broadcastScore port.`);
+    channel.push("broadcast_score", { player_score: scoreData });
+  });
 }
 //Elm.Main.init({
 //  node: document.getElementById("elm-container")

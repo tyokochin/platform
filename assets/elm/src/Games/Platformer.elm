@@ -1,9 +1,12 @@
-module Games.Platformer exposing (main)
+port module Games.Platformer exposing (main)
 
 import Browser
 import Browser.Events
-import Html exposing (Html, div)
+import Html exposing (Html, button, div)
+import Html.Attributes
+import Html.Events
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Random
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -63,7 +66,8 @@ init _ =
 -- UPDATE
 
 type Msg
-  = CountdownTimer Time.Posix
+  = BroadcastScore Encode.Value
+  | CountdownTimer Time.Posix
   | GameLoop Float
   | KeyDown String
   | NoOp
@@ -72,6 +76,8 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
+    BroadcastScore value ->
+      ( model, broadcastScore value )
     GameLoop time ->
       if characterFoundItem model then
         ( { model
@@ -173,12 +179,18 @@ keyDecoder : Decode.Decoder String
 keyDecoder =
   Decode.field "key" Decode.string
 
+-- PORTS
+
+port broadcastScore : Encode.Value -> Cmd msg
+
 -- VIEW
 
 view : Model -> Html Msg
 view model =
-  div []
-    [ viewGame model ]
+  div [ class "container" ]
+    [ viewGame model
+    , viewBroadcastScoreButton model
+    ]
 
 viewGame : Model -> Svg Msg
 viewGame model =
@@ -366,3 +378,18 @@ viewGameOverScreenText =
     [ viewGameText 260 160 "Game Over"
     , viewGameText 140 180 "Press the SPACE BAR Key to restart."
     ]
+
+viewBroadcastScoreButton : Model -> Html Msg
+viewBroadcastScoreButton model =
+  let
+    broadcastEvent =
+      model.playerScore
+        |> Encode.int
+        |> BroadcastScore
+        |> Html.Events.onClick
+  in
+    button
+      [ broadcastEvent
+      , Html.Attributes.class "button" 
+      ]
+      [ text "Broadcast Score Over Socket"] 
