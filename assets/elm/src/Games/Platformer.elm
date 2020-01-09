@@ -25,10 +25,17 @@ type Direction
   = Left
   | Right
 
+type GameState
+  = StartScreen
+  | Playing
+  | Success
+  | GameOver
+
 type alias Model =
   { characterDirection : Direction
   , characterPositionX : Int
   , characterPositionY : Int
+  , gameState : GameState
   , itemPositionX : Int
   , itemPositionY : Int
   , itemsCollected : Int
@@ -41,6 +48,7 @@ initialModel =
   { characterDirection = Right 
   , characterPositionX = 50
   , characterPositionY = 300
+  , gameState = StartScreen
   , itemPositionX = 500
   , itemPositionY = 300
   , itemsCollected = 0
@@ -72,20 +80,55 @@ update msg model =
           }
         , Random.generate SetNewItemPositionX (Random.int 50 500)
         )
+      
+      else if model.itemsCollected >= 10 then
+        ( { model | gameState = Success }, Cmd.none )
+
+      else if model.itemsCollected < 10 && model.timeRemaining == 0 then
+        ( { model | gameState = GameOver }, Cmd.none )
+
       else
         ( model, Cmd.none )
     
     KeyDown key ->
       case key of
           "ArrowLeft" ->
-            ( { model
-               | characterDirection = Left
-               , characterPositionX = model.characterPositionX - 15}, Cmd.none )
+            if model.gameState == Playing then
+              ( { model
+                | characterDirection = Left
+                , characterPositionX = model.characterPositionX - 15
+                }
+              , Cmd.none
+              )
+            
+            else
+              ( model, Cmd.none )
       
           "ArrowRight" ->
-            ( { model
+            if model.gameState == Playing then
+              ( { model
                 | characterDirection = Right
-                , characterPositionX = model.characterPositionX + 15}, Cmd.none )
+                , characterPositionX = model.characterPositionX + 15
+                }
+              , Cmd.none )
+                          
+            else
+              ( model, Cmd.none )
+
+          " " ->
+            if model.gameState /= Playing then
+              ( { model
+                | characterDirection = Right
+                , characterPositionX = 50
+                , itemsCollected = 0
+                , gameState = Playing
+                , playerScore = 0
+                , timeRemaining = 10
+                }
+              , Cmd.none
+              )
+            else
+              ( model, Cmd.none )
         
           _ ->
             ( model, Cmd.none )
@@ -97,9 +140,8 @@ update msg model =
       ( { model | itemPositionX = newPositionX }, Cmd.none )
     
     CountdownTimer time ->
-      if model.timeRemaining > 0 then
+      if model.gameState == Playing && model.timeRemaining > 0 then
         ( { model | timeRemaining = model.timeRemaining - 1 }, Cmd.none )
-      
       else
         ( model, Cmd.none )
 
@@ -141,15 +183,7 @@ view model =
 viewGame : Model -> Svg Msg
 viewGame model =
   svg [ version "1.1", width "600", height "400" ]
-    [ viewGameWindow
-    , viewGameSky
-    , viewGameGround
-    , viewCharacter model
-    , viewItem model
-    , viewGameScore model
-    , viewItemsCollected model
-    , viewGameTime model
-    ]
+    (viewGameState model)
 
 viewGameWindow : Svg Msg
 viewGameWindow =
@@ -269,4 +303,66 @@ viewGameTime model =
   Svg.svg []
     [ viewGameText 525 25 "TIME"
     , viewGameText 525 40 currentTime
+    ]
+
+viewGameState : Model -> List (Svg Msg)
+viewGameState model =
+  case model.gameState of
+      StartScreen ->
+        [ viewGameWindow
+        , viewGameSky
+        , viewGameGround
+        , viewCharacter model
+        , viewItem model
+        , viewStartScreenText
+        ]
+  
+      Playing ->
+        [ viewGameWindow
+        , viewGameSky
+        , viewGameGround
+        , viewCharacter model
+        , viewItem model
+        , viewGameScore model
+        , viewItemsCollected model
+        , viewGameTime model
+        ]
+      
+      Success ->
+        [ viewGameWindow
+        , viewGameSky
+        , viewGameGround
+        , viewCharacter model
+        , viewItem model
+        , viewSuccessScreenText
+        ]
+      
+      GameOver ->
+        [ viewGameWindow
+        , viewGameSky
+        , viewGameGround
+        , viewCharacter model
+        , viewItem model
+        , viewGameOverScreenText
+        ]
+
+viewStartScreenText : Svg Msg
+viewStartScreenText =
+  Svg.svg []
+    [ viewGameText 140 160 "Collect ten coins in ten seconds!"
+    , viewGameText 140 180 "Press the SPACE BAR key to start."
+    ]
+
+viewSuccessScreenText : Svg Msg
+viewSuccessScreenText =
+  Svg.svg []
+    [ viewGameText 260 160 "Success!"
+    , viewGameText 140 180 "Press the SPACE BAR Key to restart."
+    ]
+
+viewGameOverScreenText : Svg Msg
+viewGameOverScreenText =
+  Svg.svg []
+    [ viewGameText 260 160 "Game Over"
+    , viewGameText 140 180 "Press the SPACE BAR Key to restart."
     ]
