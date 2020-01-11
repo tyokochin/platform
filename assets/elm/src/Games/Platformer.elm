@@ -2,7 +2,7 @@ port module Games.Platformer exposing (main)
 
 import Browser
 import Browser.Events
-import Html exposing (Html, button, div)
+import Html exposing (Html, button, div, h2, li, ul)
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
@@ -34,10 +34,15 @@ type GameState
   | Success
   | GameOver
 
+type alias Gameplay =
+  { playerScore : Int
+  }
+
 type alias Model =
   { characterDirection : Direction
   , characterPositionX : Int
   , characterPositionY : Int
+  , gameplays : List Gameplay
   , gameState : GameState
   , itemPositionX : Int
   , itemPositionY : Int
@@ -51,6 +56,7 @@ initialModel =
   { characterDirection = Right 
   , characterPositionX = 50
   , characterPositionY = 300
+  , gameplays = []
   , gameState = StartScreen
   , itemPositionX = 500
   , itemPositionY = 300
@@ -71,6 +77,7 @@ type Msg
   | GameLoop Float
   | KeyDown String
   | NoOp
+  | ReceiveScoreFromPhoenix Encode.Value
   | SetNewItemPositionX Int
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -151,6 +158,15 @@ update msg model =
       else
         ( model, Cmd.none )
 
+    ReceiveScoreFromPhoenix incomingJsonData ->
+      case Decode.decodeValue decodeGameplay incomingJsonData of
+        Ok gameplay ->
+          Debug.log "Successfully received score data."
+            ( { model | gameplays = gameplay :: model.gameplays }, Cmd.none )
+        Err message ->
+          Debug.log ("Error receiving score data: " ++ Debug.toString message)
+            ( model, Cmd.none )
+
 characterFoundItem : Model -> Bool
 characterFoundItem model =
   let
@@ -173,6 +189,7 @@ subscriptions model =
     [ Browser.Events.onKeyDown (Decode.map KeyDown keyDecoder)
     , Browser.Events.onAnimationFrameDelta GameLoop
     , Time.every 1000 CountdownTimer
+    , receiveScoreFromPhoenix ReceiveScoreFromPhoenix
     ]
 
 keyDecoder : Decode.Decoder String
@@ -182,6 +199,7 @@ keyDecoder =
 -- PORTS
 
 port broadcastScore : Encode.Value -> Cmd msg
+port receiveScoreFromPhoenix : (Encode.Value -> msg) -> Sub msg
 
 -- VIEW
 
@@ -190,6 +208,7 @@ view model =
   div [ class "container" ]
     [ viewGame model
     , viewBroadcastScoreButton model
+    , viewGameplaysIndex model
     ]
 
 viewGame : Model -> Svg Msg
@@ -393,3 +412,29 @@ viewBroadcastScoreButton model =
       , Html.Attributes.class "button" 
       ]
       [ text "Broadcast Score Over Socket"] 
+
+viewGameplaysIndex : Model -> Html Msg
+viewGameplaysIndex model =
+  if List.isEmpty model.gameplays then
+    div [] []
+
+  else
+    div [ Html.Attributes.class "gameplays-index container" ]
+      [ h2 [] [ text "Player Scores" ]
+      , viewGameplaysList model.gameplays
+      ]
+
+viewGameplaysList : List Gameplay -> Html Msg
+viewGameplaysList gameplays =
+  ul [ Html.Attributes.class "gameplays-list" ]
+    (List.map viewGameplayItem gameplays)
+
+viewGameplayItem : Gameplay -> Html Msg
+viewGameplayItem gameplay =
+  li [ Html.Attributes.class "gameplay-item" ]
+    [ text ("Player Score: " ++ String.fromInt gameplay.playerScore) ]
+
+decodeGameplay : Decode.Decoder Gameplay
+decodeGameplay =
+  Decode.map Gameplay
+    (Decode.field "player_score" Decode.int)
